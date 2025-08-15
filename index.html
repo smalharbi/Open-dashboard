@@ -377,6 +377,46 @@ document.getElementById("btnSaveRules").addEventListener("click", ()=>{
   }catch(e){}
   tick();
   setInterval(tick, 60000);
+  <script>
+async function requestNotifyPermission(){
+  try { if (Notification && Notification.permission === 'default') await Notification.requestPermission(); } catch(e){}
+}
+requestNotifyPermission();
+
+function toast(msg, tone='info'){
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:12px;right:12px;bottom:14px;padding:12px;border-radius:12px;background:#0f1a24;border:1px solid #1f2a36;color:#e7f0f7;z-index:9999';
+  if(tone==='good') el.style.borderLeft='4px solid #4cd964';
+  if(tone==='bad')  el.style.borderLeft='4px solid #ff6b6b';
+  el.textContent = msg; document.body.appendChild(el);
+  setTimeout(()=> el.remove(), 4500);
+}
+
+function localNotify(title, body){
+  try {
+    if (document.visibilityState === 'visible') { toast(body, body.includes('Bearish')?'bad':'good'); }
+    if (window.navigator && navigator.vibrate) navigator.vibrate(200);
+    if (Notification && Notification.permission === 'granted') new Notification(title, { body });
+  } catch(e){}
+}
+
+// ALERT CHECK every minute (called from tick)
+function checkLevels(){
+  const px = (STATE.quotes['OPEN']?.price) || 0;
+  const rules = JSON.parse(localStorage.getItem('rules')||'{}');
+  const breakout = parseFloat(rules.breakoutLv || '3.50');
+  const breakdown = parseFloat(rules.breakdownLv || '1.80');
+  const warn = 2.30;
+
+  if (px >= breakout) localNotify('OPEN Alert', `Bullish breakout: price ${px.toFixed(2)} ≥ ${breakout.toFixed(2)}`);
+  else if (px <= breakdown) localNotify('OPEN Alert', `Bearish HARD STOP: price ${px.toFixed(2)} ≤ ${breakdown.toFixed(2)}`);
+  else if (px <= warn) localNotify('OPEN Alert', `Bearish WARNING: price ${px.toFixed(2)} ≤ ${warn.toFixed(2)}`);
+}
+
+// Call after every refresh
+const _oldTick = tick;
+tick = async function(){ await _oldTick(); checkLevels(); };
+</script>
 })();
 </script>
 
